@@ -2,6 +2,10 @@
 
 Small (bash 4+) script to execute a rundeck job and optionally wait for it to complete. Typically utilized in pipelines that do not have built-in Rundeck integration. Passing in job variables is not supported at this time (configure your job to run out of the box).
 
+## Requirements
+
+The script uses curl and jq. On Ubuntu this can be installed via apt: `apt update && apt install curl jq`
+
 ## Usage
 
 `./execute-rundeck-job --rd-job-id JOB_ID [--rd-timeout 300] [--rd-url http://127.0.0.1:4440] [--rd-auth-token AUTH_TOKEN]`

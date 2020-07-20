@@ -1,0 +1,103 @@
+#!/bin/bash
+# there is no cross-platform solution to
+# parsing long option names, so let's make a workaround
+function find_long_argument {
+    arg_find="$1"
+    arg_array=($2)
+
+    idx_argument=0
+    for i in ${arg_array[@]}; do
+        if [ "$i" = "--$arg_find" ]; then
+            # if [ "$2" = "" ]; then 
+            #     echo 1
+            #     break 
+            # fi 
+
+            next=$(( idx_argument + 1 ))
+            echo ${arg_array[$next]}
+            break
+        fi
+        # also check for equals
+        if [[ "$i" == "--$arg_find="* ]]; then
+            cut -d'=' -f2- <<< "$i"
+            break
+        fi
+        idx_argument=$((idx_argument + 1))
+    done
+}
+
+# fill these in if you want defaults
+DEFAULT_RD_URL="http://127.0.0.1:4440"
+DEFAULT_RD_AUTH_TOKEN="tokentokentokentokentokentoken"
+DEFAULT_TIMEOUT="300"
+RD_API_VERSION="35"
+
+RD_JOB_ID=$(find_long_argument "rd-job-id" "$*")
+RD_AUTH_TOKEN=$(find_long_argument "rd-auth-token" "$*")
+RD_URL=$(find_long_argument "rd-url" "$*")
+RD_TIMEOUT=$(find_long_argument "rd-timeout" "$*")
+
+if [ -z "$RD_JOB_ID" ]; then
+    echo "required argument --rd-job-id not specified"
+    exit 1
+fi 
+
+if [ -z "$RD_AUTH_TOKEN" ]; then 
+    RD_AUTH_TOKEN="$DEFAULT_RD_AUTH_TOKEN"
+fi 
+
+if [ -z "$RD_URL" ]; then 
+    RD_URL="$DEFAULT_RD_URL"
+fi 
+
+if [ -z "$RD_TIMEOUT" ]; then 
+    RD_TIMEOUT="$DEFAULT_RD_TIMEOUT"
+fi 
+
+RESPONSE=$(curl -s -X POST -H 'Accept: application/json' "$RD_URL/api/$RD_API_VERSION/job/$RD_JOB_ID/run?authtoken=$RD_AUTH_TOKEN")
+RD_JOB_NAME=$(jq -r '.job.name' <<< "$RESPONSE")
+RD_PERMALINK=$(jq -r '.permalink' <<< "$RESPONSE")
+RD_EXECUTION_ID=$(jq -r '.id' <<< "$RESPONSE")
+
+if [ -z "$RD_EXECUTION_ID" ]; then 
+    echo "Failed to schedule Rundeck job."
+    echo "$RESPONSE"
+    echo "Exiting."
+    exit 1
+fi 
+
+echo "Rundeck job '$RD_JOB_NAME' queued with ID $RD_EXECUTION_ID ..."
+echo "Execution tracking URL: $RD_PERMALINK"
+
+# exit if we're not supposed to wait
+if [ "$RD_TIMEOUT" = "0" ]; then 
+    exit 0
+fi 
+
+# monitor rundeck job progress 
+t=0
+while true; do 
+    if [ $t -gt $RD_TIMEOUT ]; then 
+        echo "Timed out waiting $t seconds for Rundeck job to complete. You can adjust the timeout with the --rd-timeout argument."
+        exit 1
+    fi 
+    RD_STATUS=$(jq -r '.status' < <(curl -s -X GET -H 'Accept: application/json' "$RD_URL/api/$RD_API_VERSION/execution/$RD_EXECUTION_ID?authtoken=$RD_AUTH_TOKEN"))
+    if [ "$RD_STATUS" = "scheduled" ]; then 
+        t=$(( t + 1 ))
+        sleep 1
+        continue 
+    fi 
+    if [ ! "$RD_STATUS" = "running" ]; then 
+        break
+    fi 
+    t=$(( t + 1 ))
+    sleep 1
+done 
+
+if [ ! "$RD_STATUS" = "succeeded" ]; then 
+    echo "Rundeck execution $RD_EXECUTION_ID failed."
+    exit 1
+fi 
+
+echo "Execution ID $RD_EXECUTION_ID complete."
+exit 0 

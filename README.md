@@ -12,7 +12,8 @@ The script uses curl and jq. On Ubuntu this can be installed via apt: `apt updat
 
 If you do not specify all arguments, defaults are used. Defaults are editable under `DEFAULT_` in the script.
 
-| **argument name** | **value type** | **what it does** | **required** |
+| argument name | value type | what it does | required |
+| ------------- | ---------- | ------------ | -------- |
 | --rd-job-id       | job ID, from Rundeck | specify the job ID to run | yes |
 | --rd-timeout      | seconds | if larger than 0, wait N seconds for the job to complete | no (if default set) |
 | --rd-url          | URL     | URL to Rundeck | no (if default set) |

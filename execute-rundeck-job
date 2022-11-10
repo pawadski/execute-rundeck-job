@@ -29,7 +29,7 @@ function find_long_argument {
 # fill these in if you want defaults
 DEFAULT_RD_URL="http://127.0.0.1:4440"
 DEFAULT_RD_AUTH_TOKEN="tokentokentokentokentokentoken"
-DEFAULT_TIMEOUT="300"
+DEFAULT_RD_TIMEOUT="300"
 RD_API_VERSION="35"
 
 RD_JOB_ID=$(find_long_argument "rd-job-id" "$*")
